@@ -1,0 +1,866 @@
+---
+title: "Project - R Code"
+Author: "Godha Priyanka G          Maheeka Kaistha	         Nitanshu Joshi             Vanshika Upadhyay"
+
+
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r setup, include=FALSE}
+
+# -----------------
+#      Imports
+# -----------------
+
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(MASS)
+library(arm)
+library(broom)
+library(viridis)
+library(GGally)
+library(mgcv)
+library(AICcmodavg)
+# Defining a color-blind friendly pallette
+cbp1 <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+```
+
+```{r}
+# Reading the Data
+# ----------------
+
+salary <- read_csv("Salary survey 2019.csv")
+salary
+
+```
+
+
+```{r}
+# ----------------------------------------------------------
+#     Checking Null values on various columns
+# ----------------------------------------------------------
+colSums(is.na(salary))
+```
+
+```{r}
+# 
+# Listing out the columns
+# 
+colnames(salary)
+```
+
+```{r}
+# Selecting the important columns for our analysis
+# ------------------------------------------------
+df = subset(salary, select = c(2,3,5,7,8,9,19,20))
+df
+```
+
+
+
+```{r}
+# Renaming columns for better analysis
+# ------------------------------------
+names(df)[names(df) == "Seniority level"] <- "Seniority"
+names(df)[names(df) == "Years of experience"] <- "Experience"
+names(df)[names(df) == "Yearly brutto salary (without bonus and stocks)"] <- "Salary"
+names(df)[names(df) == "Company type"] <- "Company_type"
+names(df)[names(df) == "Your main technology / programming language"] <- "Programming_language"
+names(df)[names(df) == "Company size"] <- "Company_size"
+names(df)[names(df) == "Company type"] <- "Company_type"
+
+print(df)
+
+# view(df)
+
+```
+
+
+
+
+```{r}
+# ---------------------------------------------------
+#     Looking at distinct values in each variable
+# ---------------------------------------------------
+sapply(df, function(x) n_distinct(x))
+
+```
+
+
+### Null Value Analysis
+
+-----------------------------------
+
+```{r}
+# ----------------------------------------------------------
+#     Checking the various Null value on various columns
+# ----------------------------------------------------------
+colSums(is.na(df))
+```
+
+```{r}
+# ------------------------------------------------------
+#           Dropping rows with any null values
+# ------------------------------------------------------
+
+print("Dimension of dataframe with NULL values: ")
+print(dim(df))
+print("---------------------------------------------")
+
+# Dropping rows with NUll values
+df<-na.omit(df)
+
+print("Dimension of dataframe without NULL values: ")
+print(dim(df))
+```
+
+
+```{r}
+#
+# Adding log of target variable 'Salary' as the new column
+#
+df$Salary.Logged <- log10(df$Salary)
+```
+
+
+
+
+
+------------------------------------------
+
+## Graphical Analysis of various variables
+
+------------------------------------------
+
+
+### Checking distribution of quantitative data
+
+
+```{r fig.height = 8, fig.width = 8}
+# ------------------------------------------------------
+# Pairplot for the Quantitative variables
+# ------------------------------------------------------
+
+df.temp.ggpair = subset(df, select=c(1, 4, 6))
+
+ggpairs(df.temp.ggpair)+
+  labs(title='Relationship between the various Quantitative variables')+
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+### Univariate Analysis - Checking count of various variables
+
+--------------------------------------------------
+
+
+```{r}
+
+# -----------------------------------------
+# Checking count for Programming Language
+# -----------------------------------------
+
+df %>% 
+	group_by(Programming_language) %>% 
+	summarise(count = n()) %>%
+  ggplot(aes(y = reorder(Programming_language,(count)), x = count)) + 
+		geom_bar(stat = 'identity')+
+  ylab("")+
+  xlab("Count")+
+  labs(title="Count of Programming languages")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  scale_colour_manual(values=cbp1)
+
+
+# -----------------------------------------------------------------------
+# Checking count for various positions (Seniority)
+# -----------------------------------------------------------------------
+df %>% 
+	group_by(Seniority) %>% 
+	summarise(count = n()) %>%
+  ggplot(aes(y = reorder(Seniority,(count)), x = count)) + 
+		geom_bar(stat = 'identity')+
+  ylab("")+
+  xlab("Count")+
+  labs(title="Count of various positions (Seniority)")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  scale_colour_manual(values=cbp1)
+
+
+# -----------------------------------------
+# Checking count for Gender
+# -----------------------------------------
+df %>% 
+	group_by(Gender) %>% 
+	summarise(count = n()) %>%
+  ggplot(aes(y = reorder(Gender,(count)), x = count)) + 
+		geom_bar(stat = 'identity')+
+  ylab("")+
+  xlab("Count")+
+  labs(title="Count of Genders")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  scale_colour_manual(values=cbp1)
+
+
+# -----------------------------------------
+# Checking count for Company Type
+# -----------------------------------------
+df %>% 
+	group_by(Company_type) %>% 
+	summarise(count = n()) %>%
+  ggplot(aes(y = reorder(Company_type,(count)), x = count)) + 
+		geom_bar(stat = 'identity')+
+  ylab("")+
+  xlab("Count")+
+  labs(title="Count of Company Types")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  scale_colour_manual(values=cbp1)
+
+
+# -----------------------------------------
+# Checking count for Company Size
+# -----------------------------------------
+df %>% 
+	group_by(Company_size) %>% 
+	summarise(count = n()) %>%
+  ggplot(aes(y = reorder(Company_size,(count)), x = count)) + 
+		geom_bar(stat = 'identity')+
+  ylab("")+
+  xlab("Count")+
+  labs(title="Count of Company Sizes")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  scale_colour_manual(values=cbp1)
+
+
+```
+
+
+### Bivariabe and Multivariate Analysis - Checking count of various variables
+
+----------------------------------------------------------------------------------------------------
+
+
+```{r fig.height = 4, fig.width = 8}
+# =====================================
+#          AGE VS EXPERIENCE
+# =====================================
+
+
+# --------------------------------------------------------
+# Experience as a function of Age differentiated by Gender
+# --------------------------------------------------------
+
+ggplot(df,aes(x=Age,y = Experience, color=Gender, width=0.5, aplha=0.75))+
+  geom_point()+
+  geom_smooth(se=FALSE)+
+  labs(title="Experience as a function of Age differentiated by Gender")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  scale_colour_manual(values=cbp1)
+
+```
+
+
+
+```{r fig.height = 4, fig.width = 8}
+
+# ================================
+#          SALARY VS AGE
+# ================================
+
+# -------------------------------------------------
+#      Plotting Salary as a function of Age
+# -------------------------------------------------
+
+ggplot(df, aes(x=Age, y=Salary.Logged))+
+  geom_point(size=0.4)+
+  geom_smooth(se=FALSE, color='orange', size=0.7)+
+  ylab("Salary (logged)")+
+  labs(title="Salary as a function of Age")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  scale_colour_manual(values=cbp1)
+
+
+# ----------------------------------------------------------------------
+#       Plotting Salary as a function of Age differentiate by Gender
+# ----------------------------------------------------------------------
+
+ggplot(df, aes(x=Age, y=Salary.Logged, color=Gender))+
+  geom_point(alpha=0.5,size=1)+
+  geom_smooth(se=FALSE ,size=0.7)+
+  ylab("Salary (logged)")+
+  labs(title="Salary (logged) as a function of Age differentiated by Genders")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  scale_colour_manual(values=cbp1)
+
+
+# ------------------------------------------------------------------------------------
+#         Grouping by Age and Gender, using median as an aggregation for Salary
+# ------------------------------------------------------------------------------------
+df %>%
+  group_by(Age, Gender) %>%
+  summarize(Median.Salary= median(Salary),.groups = 'drop')%>%
+  
+ggplot(aes(x=Age, y=log10(Median.Salary), color=Gender))+ # Plotting the values
+  geom_point(alpha=0.5,size=1)+
+  geom_smooth(method='loess', se=FALSE, span=1.3, size=0.7)+
+  ylab("Median Salary (logged)")+
+  labs(title="Median Salary (logged) as a function of Age differentiated by Genders")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  scale_colour_manual(values=cbp1)
+
+```
+
+
+
+
+```{r fig.height = 4, fig.width = 8}
+# ====================================
+#          SALARY VS EXPERIENCE
+# ====================================
+
+# ---------------------------------------------------------
+#       Plotting Salary as a function of experience
+# ---------------------------------------------------------
+ggplot(df, aes(x=Experience, y=Salary.Logged))+
+  geom_point(size=0.5)+
+  geom_smooth(method='loess', color='black', se=FALSE, size=0.7)+
+  scale_colour_manual(values=cbp1)+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  ylab("Salary (logged)")+
+  labs(title="Salary as a function of Experience")+
+  theme(plot.title=element_text(hjust=0.5))
+
+
+# --------------------------------------------------------------------------------
+#       Plotting Salary as a function of Experience differentiate by Gender
+# --------------------------------------------------------------------------------
+ggplot(df, aes(x=Experience, y=Salary.Logged, color=Gender))+
+  geom_point(alpha=0.5,size=1)+
+  geom_smooth(se=FALSE ,size=0.7)+
+  ylab("Salary (logged)")+
+  labs(title="Salary (logged) as a function of Experience differentiated by Genders")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  scale_colour_manual(values=cbp1)
+
+
+# ---------------------------------------------------------------------------------------------
+#         Grouping by Experience and Gender, using median as an aggregation for Salary
+# ---------------------------------------------------------------------------------------------
+df %>%
+  group_by(Experience, Gender) %>%
+  summarize(Median.Salary= median(Salary),
+            .groups = 'drop') %>%
+ggplot(aes(x = Experience, y = log10(Median.Salary), color=Gender))+
+  geom_point()+
+  geom_smooth(method='loess', se=FALSE, span=1.5)+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  labs(title="Median Salary as a function of Work Experience differentiated by Genders")+
+  theme(plot.title=element_text(hjust=0.5))+
+  ylab("Median Salary (logged)")+
+  scale_colour_manual(values=cbp1)
+
+```
+
+
+
+```{r}
+#
+# 
+# 
+df_gbias<- df %>%
+  group_by(Seniority, Experience, Gender) %>%
+  summarize(median_salary= median(Salary),
+            .groups = 'drop')
+df_gbias
+```
+
+
+
+
+```{r fig.height = 6, fig.width = 9}
+#
+#
+#
+
+ggplot(df, aes(x=Experience, y=log10(Salary))) + 
+  geom_point(aes(color=Gender))+
+  geom_smooth(method='loess', se = FALSE, span=1.5, size=0.5)+
+  facet_wrap(. ~ Seniority, ncol=2, scales = 'free')+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  ylab("Log Salary")+
+  labs(title="Log Salary as a function of Experience faceted by Seniority and differentiated by Gender")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_colour_manual(values=cbp1)
+
+
+
+ggplot(df_gbias, aes(x=Experience, y=log10(median_salary))) + 
+  geom_point(aes(color=Gender))+
+  geom_smooth(method='loess', se = FALSE, span=1.5)+
+  facet_wrap(. ~ Seniority, ncol=2, scales = 'free')+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  ylab("Median Salary (logged)")+
+  labs(title="Median Salary (logged) as a function of Experience faceted by Seniority and differentiated by Gender")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_colour_manual(values=cbp1)
+  
+
+ggplot(df_gbias, aes(x=Experience, y=log10(median_salary))) + 
+  geom_point(aes(color=Gender))+
+  geom_smooth(method='lm', se=FALSE)+
+  facet_wrap(. ~ Seniority, ncol=2, scales = 'free')+
+  theme(panel.border = element_rect(color = "black",fill=NA,size=1))+
+  ylab("Median Salary (logged)")+
+  labs(title="Median Salary as a function of Experience faceted by Seniority")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_colour_manual(values=cbp1)
+
+
+```
+
+
+
+
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+## MODELLING
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------------
+
+### Model 1 - Linear Model 
+
+--------------------------------------------------------------------------------
+
+
+```{r}
+model <- lm(log10(Salary) ~ Age, data=df)
+summary(model)
+```
+
+
+```{r}
+model <- lm(log10(Salary) ~ Experience, data=df)
+summary(model)
+```
+
+
+```{r}
+model <- lm(log10(Salary) ~ Experience + Age, data=df)
+summary(model)
+```
+
+
+```{r}
+model <- lm(log10(Salary) ~ Experience + Age + Experience:Age, data=df)
+summary(model)
+```
+
+
+```{r}
+#
+# Converting categorical variables to Factors for being used in a linear model
+# 
+df$Gender<-as.factor(df$Gender)
+df$Seniority<-as.factor(df$Seniority)
+df$Programming_language <- as.factor(df$Programming_language)
+```
+
+
+```{r}
+model <- lm(log10(Salary) ~ Gender, data=df)
+summary(model)
+```
+
+
+```{r}
+model <- lm(log10(Salary) ~ Seniority, data=df)
+summary(model)
+```
+
+```{r}
+model <- lm(log10(Salary) ~ Gender+Seniority, data=df)
+summary(model)
+```
+
+
+```{r}
+model <- lm(log10(Salary) ~ Experience + Seniority, data=df)
+summary(model)
+```
+
+```{r}
+model <- lm(log10(Salary) ~ Experience + Seniority + Experience:Seniority, data=df)
+summary(model)
+```
+
+
+```{r}
+model <- lm(log10(Salary) ~ Age + Experience + Seniority + Experience:Seniority, data=df)
+summary(model)
+```
+
+
+
+```{r}
+model <- lm(log10(Salary) ~ Experience + Gender, data=df)
+summary(model)
+```
+
+
+
+```{r}
+model <- lm(log10(Salary) ~ Experience + Gender + Seniority, data=df)
+summary(model)
+
+```
+
+
+```{r}
+model <- lm(Salary ~ Age+Experience+Gender+Seniority, data=df)
+summary(model)
+```
+
+
+```{r}
+model <- lm(Salary ~ Experience + Gender+Seniority+Age:Experience, data=df)
+summary(model)
+```
+
+
+```{r}
+model <- lm(log10(Salary) ~ Age + Experience + Seniority + Experience:Seniority + Company_type, data=df)
+summary(model)
+```
+
+
+
+
+
+
+
+
+-------------------------------------------------------------
+
+### Model 2 - LOESS
+
+-------------------------------------------------------------
+
+#### loess 1- Experience
+
+```{r}
+# 
+# 
+#
+
+loess.model1 <- loess(Salary ~ Experience, data=df, span=0.5)
+loess.model1.pred <- predict(loess.model1)
+
+print(summary(loess.model1))
+```
+
+
+```{r}
+#
+# loess visualisation without predictions(experience), faceted on age
+#
+
+ggplot(df , aes(x=Experience, y=Salary)) +
+  geom_smooth(method = "loess", color = 'orange', span = 0.8, method.args = list(family = 'symmetric', degree = 2),se= FALSE) +
+  #geom_smooth(method='loess', color='blue', se=FALSE)+
+  facet_wrap(~cut_number(Age, n = 4))+
+  labs(title="Salary as a function of Experience facted on Age",subtitle="Loess Smoother") +
+  theme(plot.title=element_text(hjust=0.5))+
+   theme(plot.subtitle=element_text(hjust=0.5))
+  # xlab("Height") + 
+  #ylab("Predicted Average BMI")
+```
+
+```{r}
+#
+# Test Set for Prediction
+# 
+
+test.data <- expand.grid(Experience = seq(0, 30, 1))
+
+model1.test.predict <- predict(loess.model1, newdata = test.data)
+print(model1.test.predict)
+df.test.predict <- data.frame(test.data, fit = as.vector(model1.test.predict))
+
+print(df.test.predict)
+```
+
+
+```{r}
+#
+# loess visualisation predictions(experience)
+#
+
+ggplot(df.test.predict , aes(x=Experience, y=fit)) +
+  geom_line(size=1, color='blue') +
+  #geom_smooth(method='loess', color='blue', se=FALSE)+
+  facet_wrap(~cut_number(Experience, n = 4))#+
+  # labs(title="Plot faceted by age showing how the model averages BMI with Height")+
+  # theme(plot.title=element_text(hjust=0.5))+
+  # xlab("Height") + 
+  # ylab("Predicted Average BMI")
+```
+
+
+
+#### loess model 2 - Age
+
+
+```{r}
+loess.model2 <- loess(Salary ~ Age, data=df, span=0.5)
+loess.model2.pred <- predict(loess.model2)
+
+print(summary(loess.model2))
+
+test.data1 <- expand.grid(Age = seq(21, 45, 2))
+
+model2.test.predict <- predict(loess.model2, newdata = test.data1)
+print(model2.test.predict)
+df.test.predict2 <- data.frame(test.data1, fit = as.vector(model2.test.predict))
+
+print(df.test.predict2)
+```
+
+```{r}
+#
+# loess visualisation without predictions(Age),faceted on experience
+#
+ggplot(df , aes(x=Age, y=Salary)) +
+  geom_smooth(method = "loess", color = 'orange', span = 0.8, method.args = list(family = 'symmetric', degree = 1),se=FALSE) +
+  #geom_smooth(method='loess', color='blue', se=FALSE)+
+  facet_wrap(~cut_number(Experience, n = 4))#+
+  # labs(title="Plot faceted by age showing how the model averages BMI with Height")+
+  # theme(plot.title=element_text(hjust=0.5))+
+  # xlab("Height") + 
+  # ylab("Predicted Average BMI")
+```
+
+```{r}
+#
+# loess visualisation with predictions(Age)
+#
+ggplot(df.test.predict2 , aes(x=Age, y=fit)) +
+  geom_line(size=1, color='blue') +
+  #geom_smooth(method='loess', color='blue', se=FALSE)+
+  facet_wrap(~cut_number(Age, n = 3))#+
+  # labs(title="Plot faceted by age showing how the model averages BMI with Height")+
+  # theme(plot.title=element_text(hjust=0.5))+
+  # xlab("Height") + 
+  # ylab("Predicted Average BMI")
+```
+
+
+
+-------------------------------------------------------------
+-------------------------------------------------------------
+
+
+
+-------------------------------------------------------------
+
+### Model 3 - GAM (Generalized Additive Models)
+
+-------------------------------------------------------------
+
+
+```{r}
+model_gam <- gam(log10(Salary) ~ s(Experience), data = df)
+summary(model_gam)
+```
+
+
+```{r}
+
+model_gam <- gam(log10(Salary) ~ s(Experience, k = 7) + Seniority, data = df)
+summary(model_gam)
+```
+
+```{r}
+model_gam <- gam(log10(Salary) ~ s(Age, k = 30) + s(Experience, k= 15), data = df)
+summary(model_gam)
+```
+
+
+
+```{r}
+
+model_gam <- gam(log10(Salary) ~ s(Experience, k = 7) + Company_type, data = df)
+summary(model_gam)
+```
+
+```{r}
+
+model_gam <- gam(log10(Salary) ~ s(Experience, k = 7) + Company_size, data = df)
+summary(model_gam)
+```
+
+
+
+```{r}
+model_gam_1 <- gam(Salary ~ s(Age, k = 20) + s(Experience, k = 7) + Seniority + Experience:Seniority, data = df)
+summary(model_gam_1)
+```
+
+```{r}
+model_gam_2 <- gam(Salary ~ s(Age, k = 20) + s(Experience, k = 7) + Company_type, data = df)
+summary(model_gam_2)
+```
+
+```{r}
+model_gam_3 <- gam(Salary ~ s(Age, k = 20) + s(Experience, k = 7) + Company_type + Seniority, data = df)
+summary(model_gam_3)
+```
+
+```{r}
+#
+# calculate AIC of each model
+#
+models <- list(model_gam_1, model_gam_2)
+mod.names <-c('age.exp.sen', 'age.exp.coty')
+
+AIC(model_gam_1)
+AIC(model_gam_2)
+AIC(model_gam_3)
+#aictab(cand.set = models, modnames = mod.names)
+```
+
+
+```{r}
+model_gam <- gam(log10(Salary) ~ s(Age, k = 20) + s(Experience, k = 7) + Seniority + Programming_language, data = df)
+summary(model_gam)
+```
+
+
+```{r}
+gam_best <- gam(Salary ~ s(Age, k = 15) + s(Experience, k = 7) + Seniority + Company_type + Programming_language + Company_size, data = df)
+summary(gam_best)
+```
+
+```{r}
+gam_int <- gam(log10(Salary) ~ s(Age, k = 15) + s(Experience, k = 7) + Seniority + Experience:Seniority + Programming_language + Company_type + Company_size, data = df)
+summary(gam_int)
+```
+
+--------------------------------------------------------------------------------
+
+#### GAM Predicitons
+
+
+```{r}
+unique(df$Age)
+```
+
+```{r}
+test.data <- expand.grid(Experience = seq(0, 30, 1), Age = seq(21, 45, 2), Seniority = c('Junior', 'Middle', 'Senior', 'Head', 'Principal', 'Lead'))
+
+gam_best.pred <- predict(model_gam_1, newdata = test.data)
+#print(gam_best.pred)
+df.test.pred <- data.frame(test.data, fit = as.vector(gam_best.pred))
+
+#View(df.test.pred)
+```
+
+```{r}
+plot(model_gam_1, se = FALSE)
+```
+
+```{r}
+ggplot(df, aes(x=Age, y=Salary, color = Seniority)) +
+  geom_point(size = 0.3) +
+  geom_smooth(method = 'gam') 
+```
+
+```{r}
+ggplot(df, aes(x=Experience, y=Salary, color = Seniority)) +
+  geom_point(size = 0.3) +
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "ts", k=5)) +
+  scale_colour_manual(values=cbp1)
+  #geom_smooth(mehtod = "gam", formula = Salary ~ s(Age, k = 20) + s(Experience, k = 7) + Seniority + Experience:Seniority, data = df)
+
+```
+
+```{r}
+ggplot(df.test.pred, aes(x=Experience, y=fit, color = Seniority)) +
+  #geom_point(size = 0.3) +
+  geom_smooth(method = 'gam') +
+  scale_colour_manual(values=cbp1)
+  #geom_line(size=1, color='blue') +
+  #geom_smooth(method='loess', color='blue', se=FALSE)+
+  #facet_wrap(~cut_number(Age, n = 4))
+
+ggplot(df.test.pred, aes(x=Age, y=fit, color = Seniority)) +
+  #geom_point(size = 0.3) +
+  geom_smooth(method = 'gam') +
+  scale_colour_manual(values=cbp1)
+  #geom_line(size=1, color='blue') +
+  #geom_smooth(method='loess', color='blue', se=FALSE)+
+  #facet_wrap(~cut_number(Age, n = 4))
+
+ggplot(df, aes(x=Age, y=Salary, color = Seniority)) +
+  geom_point(size = 0.3) +
+  geom_smooth(method = 'gam') +
+  scale_colour_manual(values=cbp1)
+  #geom_line(size=1, color='blue') +
+  #geom_smooth(method='loess', color='blue', se=FALSE)+
+  #facet_wrap(~cut_number(Age, n = 4))
+
+ggplot(df.test.pred, aes(x=Experience, y=fit, color = Seniority)) +
+  #geom_point(size = 0.3) +
+  geom_smooth(method = 'gam') +
+  #geom_line(size=1, color='blue') +
+  #geom_smooth(method='loess', color='blue', se=FALSE)+
+  facet_wrap(~cut_number(Age, n = 4))+
+  labs(title="Experience faceted by age")+
+  scale_colour_manual(values=cbp1)
+
+ggplot(df.test.pred, aes(x=Experience, y=fit)) +
+  #geom_point(aes(x=median(Age)), size = 0.3) +
+  geom_smooth(method = 'gam') +
+  #geom_line(size=1, color='blue') +
+  #geom_smooth(method='loess', color='blue', se=FALSE)+
+  facet_wrap(~Seniority) +
+  labs(title="Predicted Salary as a function of Experience for different Seniority levels",subtitle = "GAM Predictions") +
+  ylab("Predicted Salary")+
+  scale_colour_manual(values=cbp1)
+
+ggplot(df.test.pred, aes(x=Age, y=fit, color = Seniority)) +
+  #geom_point(size = 0.3) +
+  geom_smooth(method = 'gam', se = FALSE) +
+  #geom_line(size=1, color='blue') +
+  #geom_smooth(method='loess', color='blue', se=FALSE)+
+  facet_wrap(~cut_number(Experience, n = 4))+
+  labs(title="Predicted Salary as a function of Age faceted by experience") +
+  # theme(plot.title=element_text(hjust=0.5))+
+  # xlab("Height") + 
+  ylab("Predicted Salary")+
+  scale_colour_manual(values=cbp1)
+```
